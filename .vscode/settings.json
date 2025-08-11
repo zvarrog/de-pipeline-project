@@ -1,0 +1,8 @@
+{
+  // Включаем интеграцию и убираем все подсказки
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.shellIntegration.showWelcome": false,
+  "terminal.integrated.shellIntegration.suggestEnabled": false,
+  "terminal.integrated.shellIntegration.decorationsEnabled": "both",
+  "terminal.integrated.defaultProfile.windows": "Command Prompt"
+}

@@ -2,28 +2,26 @@ from __future__ import annotations
 import pendulum
 from airflow.models.dag import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
-
-# Импортируем специальный класс Mount для описания томов
 from docker.types import Mount
 
-# ------------------------------------------------------------------------------------
-# ВАЖНО: Замените на ваш АБСОЛЮТНЫЙ путь к корневой папке проекта!
-# Пример для Windows: 'C:/Users/dasiqe/de-pipeline-project'
-HOST_PROJECT_PATH = "C:/Users/dasiqe/de-pipeline-project"
-# ------------------------------------------------------------------------------------
+"""
+Важно для Windows/Docker Desktop:
+DockerOperator создаёт НОВЫЙ контейнер через Docker daemon на хосте.
+Bind source path ДОЛЖЕН указывать путь, существующий на ХОСТЕ, а не внутри контейнера Airflow.
+Поэтому используем абсолютный Windows-путь проекта: C:/Users/dasiqe/de-pipeline-project
+и передаём его через volumes в формате host_path:container_path.
+Внутренние пути /opt/airflow/* здесь не подойдут как source.
+"""
+
+HOST_PROJECT_PATH = "C:/Users/dasiqe/de-pipeline-project"  # абсолютный путь проекта на хосте
+OUTPUT_PATH = f"{HOST_PROJECT_PATH}/output"  # монтируем только выход – входной sample уже внутри образа
+
 
 # Создаем объекты Mount для каждого пробрасываемого тома
 # Это более явный и современный способ
-data_mount = Mount(
-    source=f"{HOST_PROJECT_PATH}/data",
-    target="/app/data",
-    type="bind",
-    read_only=True,  # Хорошая практика для входных данных
-)
-
-output_mount = Mount(
-    source=f"{HOST_PROJECT_PATH}/output", target="/app/output", type="bind"
-)
+# Оставляем определение через volumes (проще на Windows). Если нужно вернуться к Mount – можно раскомментировать.
+# data_mount = Mount(source=f"{HOST_PROJECT_PATH}/data", target="/app/data", type="bind", read_only=True)
+# output_mount = Mount(source=f"{HOST_PROJECT_PATH}/output", target="/app/output", type="bind")
 
 
 with DAG(
@@ -34,15 +32,18 @@ with DAG(
     tags=["portfolio", "spark", "pytorch"],
 ) as dag:
 
-    # ЗАДАЧА 1: Обработка данных с помощью PySpark в Docker
+    # Единственная задача: Spark обработка (sample CSV встроен в образ; full data можно будет добавить позже)
     spark_processing_task = DockerOperator(
         task_id="spark_data_processing",
         image="kindle-reviews-processor:latest",
-        auto_remove="success",
-        # ИСПОЛЬЗУЕМ ПАРАМЕТР `mounts` ВМЕСТО `volumes`
-        mounts=[data_mount, output_mount],
-        # Указываем, как Airflow должен найти Docker. Это стандартная настройка при запуске из Docker Compose.
+        auto_remove="success",  # удаляем контейнер после успешного завершения
+        mounts=[
+            Mount(source=OUTPUT_PATH, target="/app/output", type="bind"),
+        ],
         docker_url="unix://var/run/docker.sock",
-        # Это может помочь избежать проблем с сетью между контейнерами
         network_mode="bridge",
+        mount_tmp_dir=False,  # избегаем лишнего tmp bind на Windows
+        environment={
+            "PYTHONUNBUFFERED": "1",
+        },
     )

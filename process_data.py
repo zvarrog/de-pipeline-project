@@ -22,7 +22,11 @@ from pyspark.sql.types import StringType, IntegerType, FloatType
 from pyspark.sql.window import Window
 
 
-FILE_PATH = "/app/kindle_reviews.csv"
+# Используем sample-версию датасета для ускоренной локальной разработки.
+# Оригинальный полный файл предполагается в /app/data/original/kindle_reviews.csv
+# При необходимости можно переключиться, заменив путь ниже на ORIGINAL_FILE_PATH.
+ORIGINAL_FILE_PATH = "/app/data/original/kindle_reviews.csv"
+FILE_PATH = "/app/data/sample/kindle_reviews_sample.csv"
 TEXT_COLS = ["reviewText", "summary"]
 AGG_COLS = ["asin", "reviewerID"]
 
