@@ -64,4 +64,26 @@ with DAG(
             "PYTHONUNBUFFERED": "1",
         },
     )
-    check_input_task >> spark_processing_task
+
+    # ЗАДАЧА: ML Pipeline (Sentiment Analysis + Feature Engineering)
+    ml_pipeline_task = DockerOperator(
+        task_id="ml_pipeline",
+        image="kindle-reviews-processor:latest",
+        auto_remove="success",
+        command="python ml_pipeline.py",
+        mounts=[
+            Mount(source=OUTPUT_PATH, target="/app/output", type="bind"),
+            Mount(source=f"{HOST_PROJECT_PATH}/models",
+                  target="/app/models", type="bind"),
+            Mount(source=f"{HOST_PROJECT_PATH}/mlruns",
+                  target="/app/mlruns", type="bind"),
+        ],
+        docker_url="unix://var/run/docker.sock",
+        network_mode="bridge",
+        mount_tmp_dir=False,
+        environment={
+            "PYTHONUNBUFFERED": "1",
+        },
+    )
+
+    check_input_task >> spark_processing_task >> ml_pipeline_task
