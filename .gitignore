@@ -1,0 +1,38 @@
+# Исключаем большие файлы данных
+*.csv
+*.parquet
+*.json.gz
+
+# Исключаем директории с артефактами и временными файлами
+/data/original/
+/data/sample/
+/output/
+/artifacts/
+/logs/
+
+# Исключаем специфичные для Python файлы
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-wheel-metadata/
+.installed.cfg
+*.egg-info/
+dist/
+build/
+
+# Исключаем файлы IDE
+.vscode/
+.idea/
+
+# Исключаем файлы окружения
+.env
+.env.*
+!.env.example
+
+# Исключаем специфичные для ОС файлы
+.DS_Store
+Thumbs.db

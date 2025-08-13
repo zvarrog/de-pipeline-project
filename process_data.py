@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+import requests
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col,
@@ -22,11 +25,10 @@ from pyspark.sql.types import StringType, IntegerType, FloatType
 from pyspark.sql.window import Window
 
 
-# Используем sample-версию датасета для ускоренной локальной разработки.
-# Оригинальный полный файл предполагается в /app/data/original/kindle_reviews.csv
-# При необходимости можно переключиться, заменив путь ниже на ORIGINAL_FILE_PATH.
-ORIGINAL_FILE_PATH = "/app/data/original/kindle_reviews.csv"
-FILE_PATH = "/app/data/sample/kindle_reviews_sample.csv"
+# Пути по умолчанию внутри контейнера
+ORIGINAL_FILE_PATH = "/app/data/original/kindle_reviews.csv"  # если смонтирован/добавлен
+SAMPLE_FILE_PATH = "/app/data/sample/kindle_reviews_sample.csv"  # baked-in семпл
+DOWNLOAD_DEST = "/tmp/kindle_reviews.csv"  # временное место для загрузки по URL
 TEXT_COLS = ["reviewText", "summary"]
 AGG_COLS = ["asin", "reviewerID"]
 
@@ -44,11 +46,50 @@ spark = (
     .getOrCreate()
 )
 
+def resolve_input_path() -> str:
+    """Определяет входной путь к датасету.
+    Приоритет:
+    1) Переменная окружения DATA_URL -> скачиваем в DOWNLOAD_DEST
+    2) DATA_MODE=full и наличие ORIGINAL_FILE_PATH
+    3) SAMPLE_FILE_PATH (встроенный семпл в образ)
+    """
+    data_url = os.getenv("DATA_URL", "").strip()
+    data_mode = os.getenv("DATA_MODE", "sample").strip().lower()
+
+    if data_url:
+        # Скачиваем файл только если ещё нет
+        dest = Path(DOWNLOAD_DEST)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if not dest.exists():
+            print(f"[process_data] Downloading dataset from {data_url} -> {dest}")
+            try:
+                with requests.get(data_url, stream=True, timeout=60) as r:
+                    r.raise_for_status()
+                    with open(dest, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=1024 * 1024):
+                            if chunk:
+                                f.write(chunk)
+            except Exception as e:
+                raise RuntimeError(f"Failed to download dataset: {e}")
+        else:
+            print(f"[process_data] Using cached downloaded file: {dest}")
+        return str(dest)
+
+    if data_mode == "full" and os.path.exists(ORIGINAL_FILE_PATH):
+        print("[process_data] Using ORIGINAL_FILE_PATH")
+        return ORIGINAL_FILE_PATH
+
+    print("[process_data] Using SAMPLE_FILE_PATH (built-in)")
+    return SAMPLE_FILE_PATH
+
+
+INPUT_PATH = resolve_input_path()
+
 # Опции парсинга, необходимые из-за особых символов в summary и reviewText
 df = (
     spark.read.option("multiline", "true")
     .option("escape", '"')
-    .csv(FILE_PATH, header=True, inferSchema=True)
+    .csv(INPUT_PATH, header=True, inferSchema=True)
 )
 
 

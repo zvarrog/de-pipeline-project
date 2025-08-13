@@ -1,8 +1,15 @@
 from __future__ import annotations
+import os
 import pendulum
 from airflow.models.dag import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
+from airflow.operators.python import PythonOperator
 from docker.types import Mount
+
+# Импортируем специальный класс Mount для описания томов
+from docker.types import (
+    Mount,
+)  # (оставляем импорт если захотим вернуться к Mount, но ниже используем volumes)
 
 """
 Важно для Windows/Docker Desktop:
@@ -13,8 +20,16 @@ Bind source path ДОЛЖЕН указывать путь, существующ�
 Внутренние пути /opt/airflow/* здесь не подойдут как source.
 """
 
-HOST_PROJECT_PATH = "C:/Users/dasiqe/de-pipeline-project"  # абсолютный путь проекта на хосте
-OUTPUT_PATH = f"{HOST_PROJECT_PATH}/output"  # монтируем только выход – входной sample уже внутри образа
+HOST_PROJECT_PATH = "C:/Users/dasiqe/de-pipeline-project"
+OUTPUT_PATH = f"{HOST_PROJECT_PATH}/output"
+
+
+def check_inputs():
+    missing = []
+    if not os.path.isdir(OUTPUT_PATH):
+        missing.append(OUTPUT_PATH)
+    if missing:
+        raise FileNotFoundError("Отсутствуют обязательные пути:\n" + "\n".join(missing))
 
 
 # Создаем объекты Mount для каждого пробрасываемого тома
@@ -32,11 +47,16 @@ with DAG(
     tags=["portfolio", "spark", "pytorch"],
 ) as dag:
 
-    # Единственная задача: Spark обработка (sample CSV встроен в образ; full data можно будет добавить позже)
+    check_input_task = PythonOperator(
+        task_id="check_input_paths",
+        python_callable=check_inputs,
+    )
+
+    # ЗАДАЧА: Обработка данных с помощью PySpark в Docker
     spark_processing_task = DockerOperator(
         task_id="spark_data_processing",
         image="kindle-reviews-processor:latest",
-        auto_remove="success",  # удаляем контейнер после успешного завершения
+        auto_remove="success",
         mounts=[
             Mount(source=OUTPUT_PATH, target="/app/output", type="bind"),
         ],
@@ -45,5 +65,10 @@ with DAG(
         mount_tmp_dir=False,  # избегаем лишнего tmp bind на Windows
         environment={
             "PYTHONUNBUFFERED": "1",
+            # Источник данных по умолчанию (не хранится в репо): семпл из GitHub
+            "DATA_URL": "https://raw.githubusercontent.com/zvarrog/de-pipeline-project/main/data/sample/kindle_reviews_sample.csv",
+            # DATA_MODE: sample|full (full использует смонтированный /app/data/original при его наличии)
+            "DATA_MODE": "sample",
         },
     )
+    check_input_task >> spark_processing_task

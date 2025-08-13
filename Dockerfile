@@ -21,8 +21,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY process_data.py .
 
-# Копируем семпл датасета (полный оригинал монтируется/хранится вне образа)
-RUN mkdir -p data/sample
-COPY data/sample/kindle_reviews_sample.csv data/sample/
-
 CMD ["python", "process_data.py"]
