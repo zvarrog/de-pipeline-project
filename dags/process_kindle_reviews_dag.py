@@ -12,24 +12,19 @@ from docker.types import (
 )  # (оставляем импорт если захотим вернуться к Mount, но ниже используем volumes)
 
 """
-Важно для Windows/Docker Desktop:
 DockerOperator создаёт НОВЫЙ контейнер через Docker daemon на хосте.
 Bind source path ДОЛЖЕН указывать путь, существующий на ХОСТЕ, а не внутри контейнера Airflow.
-Поэтому используем абсолютный Windows-путь проекта: C:/Users/dasiqe/de-pipeline-project
-и передаём его через volumes в формате host_path:container_path.
-Внутренние пути /opt/airflow/* здесь не подойдут как source.
+Для Linux/Codespace используем путь проекта в workspace.
 """
 
-HOST_PROJECT_PATH = "C:/Users/dasiqe/de-pipeline-project"
+HOST_PROJECT_PATH = "/workspaces/de-pipeline-project"
 OUTPUT_PATH = f"{HOST_PROJECT_PATH}/output"
 
 
 def check_inputs():
-    missing = []
-    if not os.path.isdir(OUTPUT_PATH):
-        missing.append(OUTPUT_PATH)
-    if missing:
-        raise FileNotFoundError("Отсутствуют обязательные пути:\n" + "\n".join(missing))
+    # Проверка не нужна для DockerOperator, так как он создаёт отдельный контейнер
+    # Все необходимые проверки выполняются внутри контейнера обработки данных
+    print("Проверка входных данных пропущена - DockerOperator создаёт отдельный контейнер")
 
 
 # Создаем объекты Mount для каждого пробрасываемого тома
@@ -59,16 +54,14 @@ with DAG(
         auto_remove="success",
         mounts=[
             Mount(source=OUTPUT_PATH, target="/app/output", type="bind"),
+            Mount(source=f"{HOST_PROJECT_PATH}/data/original",
+                  target="/app/data/original", type="bind", read_only=True),
         ],
         docker_url="unix://var/run/docker.sock",
         network_mode="bridge",
-        mount_tmp_dir=False,  # избегаем лишнего tmp bind на Windows
+        mount_tmp_dir=False,
         environment={
             "PYTHONUNBUFFERED": "1",
-            # Источник данных по умолчанию (не хранится в репо): семпл из GitHub
-            "DATA_URL": "https://raw.githubusercontent.com/zvarrog/de-pipeline-project/main/data/sample/kindle_reviews_sample.csv",
-            # DATA_MODE: sample|full (full использует смонтированный /app/data/original при его наличии)
-            "DATA_MODE": "sample",
         },
     )
     check_input_task >> spark_processing_task
