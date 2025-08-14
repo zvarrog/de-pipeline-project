@@ -1,46 +1,38 @@
-# Python
+# Исключаем большие файлы данных
+*.csv
+*.parquet
+*.json.gz
+
+# Исключаем директории с артефактами и временными файлами
+/data/original/
+/data/sample/
+/output/
+/artifacts/
+/logs/
+
+# Исключаем специфичные для Python файлы
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-.venv/
-venv/
 env/
+venv/
 pip-wheel-metadata/
 .installed.cfg
 *.egg-info/
 dist/
 build/
 
-# Data files (too large for git)
-data/original/*.csv
-data/processed/
-*.parquet
-*.json.gz
-
-# Model files (too large for git)
-models/*.pkl
-models/*.pth
-models/versions/
-
-# Generated directories
-output/
-artifacts/
-logs/
-mlruns/
-
-# IDE
+# Исключаем файлы IDE
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Environment
+# Исключаем файлы окружения
 .env
 .env.*
 !.env.example
 
-# OS
+# Исключаем специфичные для ОС файлы
 .DS_Store
 Thumbs.db
