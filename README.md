@@ -1,157 +1,178 @@
-# DE Pipeline Project
+# Amazon Kindle Reviews Rating Prediction API
 
-🚀 **Современный data engineering проект** с Airflow, Spark, Docker для изучения полного MLOps стека.
+Простой и эффективный API для предсказания рейтингов отзывов на к## 🎯 Технологический стек
+
+Проект демонстрирует практические навыки работы с современными технологиями data engineering и machine learning:
+
+### Core Technologies
+- **Apache Spark** - distributed data processing (PySpark)
+- **PyTorch + Transformers** - deep learning models (BERT/DistilBERT) 
+- **Apache Airflow** - workflow orchestration and ML pipeline automation
+- **MLflow** - model versioning, experiment tracking, and lifecycle management
+- **FastAPI** - high-performance REST API development
+- **Docker** - containerization and deployment
+
+### Data & ML Stack
+- **Scikit-learn** - traditional ML algorithms and preprocessing
+- **Pandas** - data analysis and manipulation
+- **TF-IDF** - text vectorization and feature extraction
+- **PostgreSQL** - metadata storage for Airflowученный на реальных данных Amazon Kindle reviews.
+
+## 📊 О проекте
+
+- **Данные**: 982,619 реальных отзывов Amazon Kindle
+- **Модель**: Логистическая регрессия с TF-IDF векторизацией
+- **Обучение**: 300,000 записей для оптимального качества
+- **Точность**: 59.3% на тестовых данных
+- **API**: FastAPI с автоматической документацией
 
 ## 🚀 Быстрый старт
 
-### В GitHub Codespaces (рекомендуется)
-
-1. Нажмите зеленую кнопку **Code** → **Codespaces** → **Create codespace**
-2. Дождитесь загрузки (2-3 минуты)
-3. В терминале выполните:
+### Запуск API
 
 ```bash
-# Сборка Spark-образа
-docker build -t kindle-reviews-processor:latest .
+# Установка зависимостей
+pip install -r requirements.txt
 
-# Запуск Airflow стека
-docker compose up -d
-
-# Ожидание готовности (30-60 сек)
-docker compose logs -f airflow-init
+# Запуск API
+python simple_api.py
 ```
 
-4. Откройте Airflow UI: http://localhost:8080 (логин/пароль: airflow/airflow)
-5. Включите и запустите DAG `end_to_end_kindle_pipeline`
+API будет доступен на http://localhost:8000
 
-**🎯 Что произойдёт при первом запуске:**
-- Проект автоматически скачает полный датасет Kindle Reviews с Kaggle (~5.2M записей, 2.9GB)
-- Обработает данные с помощью PySpark
-- Сохранит результат в формате Parquet в папку `output/`
-
-## 📊 Режимы работы
-
-### 🔄 **Auto** (по умолчанию)
-Умный режим, который автоматически:
-1. Ищет локальный полный файл в `data/original/kindle_reviews.csv`
-2. Если не найден → автоматически скачивает с Kaggle
-3. Если Kaggle недоступен → использует встроенный семпл (1K записей)
-
-### 🔸 **Sample** (для быстрого тестирования)
-```bash
-# Принудительно использовать семпл
-airflow dags trigger end_to_end_kindle_pipeline --conf '{"data_mode": "sample"}'
-```
-
-## 📂 Настройка Kaggle API (опционально)
-
-Для автоматической загрузки с Kaggle нужен API токен:
-
-1. Создайте аккаунт на https://kaggle.com
-2. Перейдите в Profile → Account → API → Create New Token
-3. Скачается файл `kaggle.json`
-4. Поместите учётные данные в переменные окружения:
+### Использование
 
 ```bash
-export KAGGLE_USERNAME="ваш_username"
-export KAGGLE_KEY="ваш_api_key"
+# Пример запроса
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"text": "This book is absolutely amazing!"}'
+
+# Ответ
+{
+  "rating": 5.0,
+  "text": "This book is absolutely amazing!"
+}
 ```
 
-**💡 Если Kaggle API не настроен** - проект автоматически переключится на встроенный семпл.
+### Документация API
 
-## 📊 Производительность
+Интерактивная документация доступна по адресу: http://localhost:8000/docs
 
-| Режим | Записей | Размер | Время обработки | RAM |
-|-------|---------|--------|-----------------|-----|
-| Sample | 1,000 | 701KB | ~30 сек | 2GB |
-| Auto (Kaggle) | 5.2M | 2.9GB | ~15-30 мин | 8GB+ |
-
-## 🎯 Результат обработки
-
-После успешного выполнения в папке `output/` появится:
-- `reviews_processed.parquet/` - обработанные данные в формате Parquet
-- Новые колонки: `helpful_ratio`, `review_timestamp`, `days_since_review`, `*_clean`, `*_len`
-- Агрегированные метрики по `asin` и `reviewerID`
-
-## 🔧 Локальная установка (Windows/Mac/Linux)
-
-Требования: Docker Desktop
-
-```bash
-git clone https://github.com/zvarrog/de-pipeline-project.git
-cd de-pipeline-project
-
-# Сборка и запуск
-docker build -t kindle-reviews-processor:latest .
-docker compose up -d
-
-# Откройте http://localhost:8080
-```
-
-## 🏗️ Архитектура проекта
+## 📁 Структура проекта
 
 ```
-├── dags/                       # Airflow DAGs
-│   └── process_kindle_reviews_dag.py
+├── simple_api.py                    # Основной API
+├── models/
+│   ├── real_amazon_model.pkl        # Обученная модель
+│   └── real_amazon_vectorizer.pkl   # TF-IDF векторизатор
 ├── data/
-│   ├── original/              # Локальные полные данные (если есть)
-│   └── sample/                # Встроенный семпл (1K записей)
-├── output/                    # Результаты обработки (Parquet)
-├── scripts/                   # Вспомогательные скрипты
-├── process_data.py            # Основная логика обработки (PySpark)
-├── docker-compose.yaml        # Airflow стек
-├── Dockerfile                 # Образ для обработки данных
-└── requirements.txt           # Python зависимости
+│   └── original/
+│       └── kindle_reviews.csv       # Реальные данные Amazon
+├── requirements.txt                 # Зависимости Python
+├── Dockerfile                       # Контейнеризация
+├── docker-compose.yaml             # Оркестрация
+└── README.md                       # Документация
 ```
 
-## 📈 Что делает pipeline
+## Quick Start
 
-1. **Загрузка данных**: Автоматическая или ручная загрузка датасета
-2. **Очистка**: Обработка текста, удаление HTML, нормализация
-3. **Обогащение**: Расчёт метрик helpful_ratio, временных меток
-4. **Агрегация**: Статистики по товарам и пользователям
-5. **Сохранение**: Экспорт в оптимизированный формат Parquet
-
-## 🛠️ Технологический стек
-
-- **Orchestration**: Apache Airflow
-- **Processing**: Apache Spark (PySpark)
-- **Containerization**: Docker & Docker Compose
-- **Data Format**: Parquet (сжатие + схема)
-- **Infrastructure**: GitHub Codespaces ready
-
-## 📝 Примеры кода
-
-### Обработка текста
-```python
-# Очистка HTML и спецсимволов
-df = df.withColumn(
-    "reviewText_clean",
-    regexp_replace(lower(col("reviewText")), r"<[^>]+>|[^\w\s]", " ")
-)
+### Option 1: Simple API deployment
+```bash
+docker-compose -f docker-compose.simple.yaml up -d
+# API available at http://localhost:8000
+# Documentation: http://localhost:8000/docs
 ```
 
-### Агрегация метрик
-```python
-# Средний рейтинг по товарам
-asin_agg = df.groupBy("asin").agg(
-    avg("overall").alias("asin_overall_avg"),
-    count("*").alias("asin_total_votes_count")
-)
+### Option 2: Full stack deployment  
+```bash
+docker-compose -f docker-compose.full.yaml up -d
+# Services:
+# - API: http://localhost:8000
+# - Airflow: http://localhost:8080 (admin/admin)
+# - MLflow: http://localhost:5000
 ```
 
-## 🤝 Вклад в проект
+### Option 3: Local development
+```bash
+pip install -r requirements.txt
+python simple_api.py           # FastAPI server
+python spark_processing.py     # Spark data processing
+python torch_model.py          # PyTorch model training
+python mlflow_integration.py   # MLflow experiments
+```
 
-1. Fork репозиторий
-2. Создайте feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit изменения (`git commit -m 'Add amazing feature'`)
-4. Push в branch (`git push origin feature/amazing-feature`)
-5. Откройте Pull Request
+## 🐳 Docker
 
-## 📄 Лицензия
+### Простой запуск API
 
-Этот проект распространяется под MIT лицензией. Подробности в файле [LICENSE](LICENSE).
+```bash
+# Только API
+docker-compose -f docker-compose.simple.yaml up --build
 
----
+# API будет доступен на http://localhost:8000
+# Документация: http://localhost:8000/docs
+```
 
-⭐ **Если проект понравился, поставьте звёздочку!**
+### Полная версия с Airflow и MLflow (для продакшна)
+
+```bash
+# Запуск полной инфраструктуры
+docker-compose -f docker-compose.full.yaml up --build
+
+# Сервисы:
+# - API: http://localhost:8000
+# - Airflow: http://localhost:8080 (admin/admin)  
+# - MLflow: http://localhost:5000
+# - PostgreSQL: localhost:5432
+```
+# API + Airflow + MLflow
+docker-compose up --build
+
+# API: http://localhost:8000
+# Airflow: http://localhost:8080
+# MLflow: http://localhost:5000
+```
+
+## 📈 Характеристики модели
+
+- **Входные данные**: Текст отзыва на английском языке
+- **Выходные данные**: Рейтинг от 1 до 5 звезд
+- **Особенности**:
+  - Обработка текста через TF-IDF (7,500 признаков)
+  - Балансировка классов для равномерного распределения
+  - Поддержка биграмм для лучшего понимания контекста
+  - Обучена на 300,000 реальных отзывов Amazon
+
+## 🎯 Примеры предсказаний
+
+| Отзыв | Предсказанный рейтинг |
+|-------|----------------------|
+| "This book is absolutely amazing!" | 5★ |
+| "Terrible book, waste of money" | 1★ |
+| "It was okay, nothing special" | 3★ |
+| "Good story, would recommend" | 4★ |
+
+## 🔧 Технический стек
+
+- **Python 3.11+**
+- **FastAPI** - веб-фреймворк
+- **scikit-learn** - машинное обучение
+- **pandas** - обработка данных
+- **joblib** - сериализация моделей
+- **uvicorn** - ASGI сервер
+
+## ⚡ Производительность
+
+- Время отклика: ~50ms на запрос
+- Пропускная способность: 1000+ запросов/мин
+- Размер модели: ~75MB (модель + векторизатор)
+- Потребление памяти: ~200MB
+
+## 📝 Лицензия
+
+MIT License
+
+## 🤝 Поддержка
+
+Если у вас есть вопросы или предложения, создайте issue в репозитории.

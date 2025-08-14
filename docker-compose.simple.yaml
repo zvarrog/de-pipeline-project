@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Main API service
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+    command: python simple_api.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MLflow for model tracking (optional)
+  mlflow:
+    image: python:3.11-slim
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    working_dir: /app
+    command: >
+      bash -c "
+        pip install mlflow && 
+        mlflow server --host 0.0.0.0 --port 5000 --default-artifact-root /mlruns
+      "
+    profiles:
+      - mlflow

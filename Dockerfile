@@ -19,7 +19,31 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy application files
 COPY process_data.py .
 COPY ml_pipeline.py .
+COPY ml_pipeline_enhanced.py .
+COPY ml_pipeline_lstm.py .
+COPY ml_pipeline_corrected.py .
+COPY ml_pipeline_advanced.py .
+COPY ml_pipeline_embeddings.py .
+COPY ml_pipeline_meta.py .
+COPY ml_report.py .
+COPY final_comparison.py .
+COPY data_quality.py .
+COPY api_server.py .
+COPY model_registry.py .
+COPY test_api.py .
 
-CMD ["python", "process_data.py"]
+# Create necessary directories
+RUN mkdir -p /app/data/processed /app/logs /app/models /app/mlruns
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV MLFLOW_TRACKING_URI=file:///app/mlruns
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["python", "api_server.py"]
